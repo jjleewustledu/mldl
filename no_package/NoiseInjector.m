@@ -100,7 +100,7 @@ classdef NoiseInjector
             %  https://math.stackexchange.com/questions/52869/numerical-approximation-of-levy-flight
             
             Nt = length(b0);
-            alpha_ = 1/3 + 3*rand_;
+            alpha_ = 1 + 2*rand_;
             xmin = 1e-3;
             b = xmin*(randn(1, Nt)).^(-1/alpha_);
             b = (-1).^randi(2, 1, Nt).*b;
@@ -117,7 +117,7 @@ classdef NoiseInjector
             %% https://math.stackexchange.com/questions/52869/numerical-approximation-of-levy-flight
             
             Nt = length(b0);
-            alpha_ = 1/3 + 3*rand_;
+            alpha_ = 1 + 2*rand_;
             xmin = 1e-3;
             b = xmin*(rand(1, Nt)).^(-1/alpha_);
             b = (-1).^randi(2, 1, Nt).*b;
