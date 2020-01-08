@@ -18,6 +18,6 @@ function [bold,mask] = noise_injector(bold, varargin)
     NI = NoiseInjector(bold, varargin{:});
     NI = NI.inject_noise_model();
     bold = NI.bold_;
-    mask = NI.focus_;
+    mask = single(NI.focus_);
 end
    

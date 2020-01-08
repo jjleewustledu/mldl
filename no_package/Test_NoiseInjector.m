@@ -24,9 +24,11 @@ classdef Test_NoiseInjector < matlab.unittest.TestCase
  			this.assertEqual(1,1);
         end
         function test_noise_injector(this)
-            bold = noise_injector(this.sinusoidal_GM);            
+            [bold,mask] = noise_injector(this.sinusoidal_GM);            
             ic2 = mlfourd.ImagingContext2(bold);
             ic2.fsleyes
+            ic3 = mlfourd.ImagingContext2(mask);
+            ic3.fsleyes
         end
         function test_inject_noise_model(this)
             this.testObj = this.testObj.inject_noise_model();
