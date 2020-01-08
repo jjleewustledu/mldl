@@ -347,7 +347,7 @@ classdef NoiseInjector
     properties (Constant)
         DEFAULT_MODEL = 'Levy'
         MODELS = {'affine', 'Brownian', 'flip', 'Levy', 'normal', 'points', 'power', 'shuffle'}
-        APARC_ASEG_MASK = '/Users/jjlee/MATLAB-Drive/mldl/no_package/N21_aparc+aseg_GMctx_on_711-2V_333_avg_zlt0.5_gAAmask_v1.4dfp.img'
+        APARC_ASEG_MASK = 'gm3d.img'
     end
     
 	properties
