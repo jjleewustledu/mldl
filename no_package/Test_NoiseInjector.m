@@ -19,13 +19,12 @@ classdef Test_NoiseInjector < matlab.unittest.TestCase
 
 	methods (Test)
 		function test_afun(this)
- 			import mldl.*;
  			this.assumeEqual(1,1);
  			this.verifyEqual(1,1);
  			this.assertEqual(1,1);
         end
         function test_noise_injector(this)
-            bold = mldl.noise_injector('bold', this.sinusoidal_GM, 'model', {'normal' 'flip' 'shuffle' 'affine'});            
+            bold = noise_injector(this.sinusoidal_GM);            
             ic2 = mlfourd.ImagingContext2(bold);
             ic2.fsleyes
         end
@@ -35,7 +34,7 @@ classdef Test_NoiseInjector < matlab.unittest.TestCase
             ic2.fsleyes
         end
         function test_inject_noise_model_cell(this)
-            this.testObj = this.testObj.inject_noise_model({'Levy' 'flip' 'shuffle' 'affine'});
+            this.testObj = this.testObj.inject_noise_model({'Levy' 'flip' 'points' 'shuffle' 'affine'});
             ic2 = mlfourd.ImagingContext2(this.testObj.bold_);
             ic2.fsleyes
         end
@@ -80,43 +79,43 @@ classdef Test_NoiseInjector < matlab.unittest.TestCase
             ic2.fsleyes
         end
         function test_affine1D(this)
-            plot(this.testObj.affine1D(this.sinusoidal));
+            plot(this.testObj.affine1D(this.sinusoidal, rand()));
         end
         function test_circshift(this)
-            plot(this.testObj.circshift(this.sinusoidal, 2));
+            plot(this.testObj.circshift(this.sinusoidal, 2, randn()));
         end
         function test_insert1D(this)
             plot(this.testObj.insert1D(this.sinusoidal, this.sinusoidal(1:25), 51));
         end
         function test_points1D(this)
-            plot(this.testObj.points1D(this.sinusoidal));
+            plot(this.testObj.points1D(this.sinusoidal, rand()));
         end
         function test_select1D(this)
-            [b1,t0,Nt] = this.testObj.select1D(this.sinusoidal);
+            [b1,t0,Nt] = this.testObj.select1D(this.sinusoidal, rand(), rand(), rand());
             plot(b1)
             fprintf('t0->%g\n', t0)
             fprintf('Nt->%g\n', Nt)
         end
         function test_shuffle1D(this)
-            plot(this.testObj.shuffle1D(this.sinusoidal));
+            plot(this.testObj.shuffle1D(this.sinusoidal, rand()));
         end
         function test_normal1D(this)
-            b = this.testObj.normal1D(300);
+            b = this.testObj.normal1D(this.sinusoidal, 0.5);
             plot(b)
             title('test\_normal1D')
         end
         function test_power1D(this)
-            b = this.testObj.power1D(300);
+            b = this.testObj.power1D(this.sinusoidal, 0.5, rand());
             plot(b)
-            title('test\_normal1D')
+            title('test\_power1D')
         end
         function test_Brownian_walk1D(this)
-            b = this.testObj.Brownian_walk1D(300);
+            b = this.testObj.Brownian_walk1D(this.sinusoidal, 0.5);
             plot(b)
             title('test\_Brownian\_walk1D')
         end
         function test_Levy_flight1D(this)
-            b = this.testObj.Levy_flight1D(300);
+            b = this.testObj.Levy_flight1D(this.sinusoidal, 0.5, rand());
             plot(b)
             title('test\_Levy\_flight1D')
         end
@@ -133,14 +132,14 @@ classdef Test_NoiseInjector < matlab.unittest.TestCase
 
  	methods (TestClassSetup)
 		function setupNoiseInjector(this)
- 			import mldl.*;
+ 			this.registry = MatlabRegistry.instance();
             msk = NoiseInjector.read_aparc_aseg_mask();            
             this.sinusoidal = sin(pi*(0:99)/10);
             this.sinusoidal_GM = zeros(48,64,48,100);
             for t = 0:99
                 this.sinusoidal_GM(:,:,:,t+1) = msk*sin(pi*t/10);
             end
- 			this.testObj_ = NoiseInjector('bold', this.sinusoidal_GM);
+ 			this.testObj_ = NoiseInjector(this.sinusoidal_GM);
  		end
 	end
 

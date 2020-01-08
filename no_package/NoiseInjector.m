@@ -31,6 +31,7 @@ classdef NoiseInjector
                 b = rand()*b/max(abs(b));
             catch ME
                 disp(ME)
+                struct2str(ME.stack)
                 warning('mldl:RuntimeWarning', 'NoiseInjector.affine1D.b -> %s', mat2str(b))
                 b = b0;
             end
@@ -50,7 +51,7 @@ classdef NoiseInjector
             b(t0:tf) = c;
         end
         function b = points1D(b, rand_)
-            %% mutates a single point
+            %% mutates a random subset of points
 
             N = length(b);
             N1 = ceil(rand_*N);
@@ -86,32 +87,43 @@ classdef NoiseInjector
         
         %% DISTRIBUTIONS, WALKS & FLIGHTS
         
-        function b  = normal1D(Nt)
+        function b  = normal1D(b0, mix)
             %% samples the normal distribution
-            
+           
+            Nt = length(b0);
             b = randn(1, Nt);
             b = rand()*b/max(abs(b));
+            b = (1 - mix)*b0 + mix*b;
         end
-        function b  = power1D(Nt)
+        function b  = power1D(b0, mix, rand_)
             %% samples a power law
             %  https://math.stackexchange.com/questions/52869/numerical-approximation-of-levy-flight
             
-            alpha_ = 2*rand() + eps;
+            Nt = length(b0);
+            alpha_ = 1/3 + 3*rand_;
             xmin = 1e-3;
             b = xmin*(randn(1, Nt)).^(-1/alpha_);
-            b = rand()*real(b)/max(abs(b));
+            b = (-1).^randi(2, 1, Nt).*b;
+            b = rand()*real(b)/max(abs(b));            
+            b = (1 - mix)*b0 + mix*b;
         end
-        function b  = Brownian_walk1D(Nt)
+        function b  = Brownian_walk1D(b0, mix)
+            Nt = length(b0);
             b = cumsum(randn(1, Nt));
-            b = rand()*b/max(abs(b));
+            b = rand()*b/max(abs(b));         
+            b = (1 - mix)*b0 + mix*b;
         end
-        function b  = Levy_flight1D(Nt)
+        function b  = Levy_flight1D(b0, mix, rand_)
             %% https://math.stackexchange.com/questions/52869/numerical-approximation-of-levy-flight
             
-            alpha_ = 2*rand() + eps;
+            Nt = length(b0);
+            alpha_ = 1/3 + 3*rand_;
             xmin = 1e-3;
-            b = cumsum(xmin*(rand(1, Nt)).^(-1/alpha_));
-            b = rand()*real(b)/max(abs(b));
+            b = xmin*(rand(1, Nt)).^(-1/alpha_);
+            b = (-1).^randi(2, 1, Nt).*b;
+            b = cumsum(b);
+            b = rand()*real(b)/max(abs(b));         
+            b = (1 - mix)*b0 + mix*b;
         end
         
         %% UTILITIES         
@@ -149,8 +161,9 @@ classdef NoiseInjector
         function img = read_aparc_aseg_mask()
             %% returns single array, reshaped to [48 64 48] with NIfTI orderings
             
-            pth = fullfile(getenv('MLPDIR'), 'Reference_Images', '');
-            fqfn = fullfile(pth, 'N21_aparc+aseg_GMctx_on_711-2V_333_avg_zlt0.5_gAAmask_v1.4dfp.img');                        
+            %pth = fullfile(getenv('MLPDIR'), 'Reference_Images', '');
+            %fqfn = fullfile(pth, 'N21_aparc+aseg_GMctx_on_711-2V_333_avg_zlt0.5_gAAmask_v1.4dfp.img');                        
+            fqfn = NoiseInjector.APARC_ASEG_MASK;
             fid = fopen(fqfn, 'r');
             img = single(fread(fid,'float'));
             fclose(fid);
@@ -168,15 +181,18 @@ classdef NoiseInjector
  		function this = NoiseInjector(bold, varargin)
  			%% NOISEINJECTOR
             %  @param bold is numeric, size(bold) ~ [48 64 48 Nt]; its internal representation is double.
-            %  @param model is char:  'default', 'affine', 'Brownian', 'flip', 'normal', 'points', 'shuffle'.
+            %  @param model is char:  'affine', 'Brownian', 'flip', 'Levy', 'normal', 'points', 'power', 'shuffle' or
+            %               is cell of char.  Default is this.DEFAULT_MODEL.
             %  @param focus_radius is numeric:  default 8.
-            %  @param mix is in [0, 1] and determines variability in focus voxels.
+            %  @param mix is in [0, 1] and determines variability amongst focus voxels.
+            %  @param mix_process is in [0, 1] and determines mix of normal and stochastic process.
 
             ip = inputParser;
-            addParameter(ip, 'bold', [], @(x) size(x,1) == 48 && size(x,2) == 64 && size(x,3) == 48)
-            addParameter(ip, 'model', 'default', @(x) ischar(x) || iscell(x))
+            addRequired( ip, 'bold', @(x) size(x,1) == 48 && size(x,2) == 64 && size(x,3) == 48)
+            addParameter(ip, 'model', this.DEFAULT_MODEL, @(x) ischar(x) || iscell(x))
             addParameter(ip, 'focus_radius', 8, @isnumeric)
-            addParameter(ip, 'mix', 0.5, @(x) isnumeric(x) && x < 1)
+            addParameter(ip, 'mix', 0.2, @(x) isnumeric(x) && x < 1)
+            addParameter(ip, 'mix_process', 0.2, @(x) isnumeric(x) && x < 1)
             parse(ip, bold, varargin{:})
             ipr = ip.Results;
     
@@ -184,6 +200,7 @@ classdef NoiseInjector
             this.model_ = ipr.model;
             this.focus_radius_ = ipr.focus_radius;
             this.mix_ = ipr.mix;
+            this.mix_process_ = ipr.mix_process;
             this.size_ = size(this.bold_);
             this.Nt_ = this.size_(4);
             [this.focus_,this.Nfocus_] = this.select_focus(); % 4D
@@ -195,7 +212,7 @@ classdef NoiseInjector
             parse(ip, varargin{:})
             model = ip.Results.model;
             
-            import mldl.NoiseInjector.* 
+            import NoiseInjector.* 
             b = this.bold_(this.focus_); % Nfocus*Nt x 1
             b = reshape(b, [this.Nfocus_, this.Nt_]); % Nfocus x Nt 
             if iscell(model)
@@ -210,9 +227,6 @@ classdef NoiseInjector
             r1 = rand();
             r2 = rand();
             switch model
-                case 'default' 
-                    m = randi(6);
-                    this = this.inject_noise_model(this.MODELS{1+m});
                 case 'affine'
                     r = randn();
                     for vxl = 1:size(b,1)
@@ -230,7 +244,7 @@ classdef NoiseInjector
                         r1 = this.mix_rand_(r1);
                         r2 = this.mix_rand_(r2);
                         [b1,t0] = this.select1D(b(vxl,:), r0, r1, r2); % 1 x Nt <= 1 x Nt
-                        b1 = this.Brownian_walk1D(length(b1));
+                        b1 = this.Brownian_walk1D(b1, this.mix_process_);
                         b(vxl,:) = this.insert1D(b(vxl,:), b1, t0);
                     end
                 case 'flip'
@@ -243,12 +257,14 @@ classdef NoiseInjector
                         b(vxl,:) = this.insert1D(b(vxl,:), b1, t0);
                     end
                 case 'Levy'
+                    r = rand();
                     for vxl = 1:size(b,1)
                         r0 = rand();
                         r1 = this.mix_rand_(r1);
                         r2 = this.mix_rand_(r2);
-                        [b1,t0] = this.select1D(b(vxl,:), r0, r1, r2); % 1 x Nt <= 1 x Nt
-                        b1 = this.Levy_flight1D(length(b1));
+                        [b1,t0] = this.select1D(b(vxl,:), r0, r1, r2); % 1 x Nt <= 1 x Nt                        
+                        r = this.mix_rand_(r);
+                        b1 = this.Levy_flight1D(b1, this.mix_process_, r);
                         b(vxl,:) = this.insert1D(b(vxl,:), b1, t0);
                     end
                 case 'normal'
@@ -257,7 +273,7 @@ classdef NoiseInjector
                         r1 = this.mix_rand_(r1);
                         r2 = this.mix_rand_(r2);
                         [b1,t0] = this.select1D(b(vxl,:), r0, r1, r2); % 1 x Nt <= 1 x Nt
-                        b1 = this.normal1D(length(b1));
+                        b1 = this.normal1D(b1, this.mix_process_);
                         b(vxl,:) = this.insert1D(b(vxl,:), b1, t0);
                     end
                 case 'points'
@@ -272,12 +288,14 @@ classdef NoiseInjector
                         b(vxl,:) = this.insert1D(b(vxl,:), b1, t0);
                     end
                 case 'power'
+                    r = rand();
                     for vxl = 1:size(b,1)
                         r0 = rand();
                         r1 = this.mix_rand_(r1);
                         r2 = this.mix_rand_(r2);
-                        [b1,t0] = this.select1D(b(vxl,:), r0, r1, r2); % 1 x Nt <= 1 x Nt
-                        b1 = this.power1D(length(b1));
+                        [b1,t0] = this.select1D(b(vxl,:), r0, r1, r2); % 1 x Nt <= 1 x Nt                        
+                        r = this.mix_rand_(r);
+                        b1 = this.power1D(b1, this.mix_process_, r);
                         b(vxl,:) = this.insert1D(b(vxl,:), b1, t0);
                     end
                 case 'shuffle'
@@ -326,7 +344,9 @@ classdef NoiseInjector
     end
     
     properties (Constant)
-        MODELS = {'default', 'affine', 'Brownian', 'flip', 'normal', 'points', 'shuffle'}
+        DEFAULT_MODEL = 'Levy'
+        MODELS = {'affine', 'Brownian', 'flip', 'Levy', 'normal', 'points', 'power', 'shuffle'}
+        APARC_ASEG_MASK = '/Users/jjlee/MATLAB-Drive/mldl/no_package/N21_aparc+aseg_GMctx_on_711-2V_333_avg_zlt0.5_gAAmask_v1.4dfp.img'
     end
     
 	properties
@@ -335,6 +355,7 @@ classdef NoiseInjector
         focus_
         focus_radius_
         mix_
+        mix_process_
         model_
         Nfocus_
         Nt_
