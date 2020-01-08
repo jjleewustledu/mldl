@@ -332,7 +332,8 @@ classdef NoiseInjector
             msk = this.aparc_aseg_mask_;
             pth_len = ceil(sum(sum(sum(msk)))*rand());
             focus = double(this.mask2mask_path(msk) == pth_len);
-            se = strel('sphere', ceil(this.focus_radius_*(0.5 + rand())));
+            rad = max(ceil(this.focus_radius_*(1 + 0.2*randn())), 0.5*this.focus_radius_);
+            se = strel('sphere', rad);
             focus = imdilate(focus, se);
             z = zeros(this.size_);
             for t = 1:this.size_(4)
