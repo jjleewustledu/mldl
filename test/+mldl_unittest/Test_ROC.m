@@ -124,39 +124,43 @@ classdef Test_ROC < matlab.unittest.TestCase
         function test_perfcurveAverages(this)
             import mlfourd.ImagingFormatContext
             
-            REG = 'other language areas'; % 'Wernicke''s area'; % 'Broca''s area'; % 'language areas'; % 
+            REG = 'all language areas'; % 'Broca''s area'; % 'Wernicke''s area'; % 'other language areas'; 
             switch REG
                 case 'Broca''s area'
-                    roc_dnn    = mldl.ROC('test', 'DNN',           'label', this.NSb, 'quadrant', this.LHb);
-                    roc_dnn100 = mldl.ROC('test', 'DNN_100frames', 'label', this.NSb, 'quadrant', this.LHb);
-                    roc_tsk    = mldl.ROC('test', 'task',          'label', this.NSb, 'quadrant', this.LHb);
+                    roc_dnn    = mldl.ROC('test', 'DNN',           'label', this.NSb, 'mask', this.GM);
+                    roc_dnn100 = mldl.ROC('test', 'DNN_100frames', 'label', this.NSb, 'mask', this.GM);
+                    roc_tsk    = mldl.ROC('test', 'task',          'label', this.NSb, 'mask', this.GM);
                 case 'Wernicke''s area'
-                    roc_dnn    = mldl.ROC('test', 'DNN',           'label', this.NSw, 'quadrant', this.LHw);
-                    roc_dnn100 = mldl.ROC('test', 'DNN_100frames', 'label', this.NSw, 'quadrant', this.LHw);
-                    roc_tsk    = mldl.ROC('test', 'task',          'label', this.NSw, 'quadrant', this.LHw);
+                    roc_dnn    = mldl.ROC('test', 'DNN',           'label', this.NSw, 'mask', this.GM);
+                    roc_dnn100 = mldl.ROC('test', 'DNN_100frames', 'label', this.NSw, 'mask', this.GM);
+                    roc_tsk    = mldl.ROC('test', 'task',          'label', this.NSw, 'mask', this.GM);
                 case 'other language areas'
-                    roc_dnn    = mldl.ROC('test', 'DNN',           'label', this.NSo, 'quadrant', this.RH);
-                    roc_dnn100 = mldl.ROC('test', 'DNN_100frames', 'label', this.NSo, 'quadrant', this.RH);
-                    roc_tsk    = mldl.ROC('test', 'task',          'label', this.NSo, 'quadrant', this.RH);
+                    roc_dnn    = mldl.ROC('test', 'DNN',           'label', this.NSo, 'mask', this.RH);
+                    roc_dnn100 = mldl.ROC('test', 'DNN_100frames', 'label', this.NSo, 'mask', this.RH);
+                    roc_tsk    = mldl.ROC('test', 'task',          'label', this.NSo, 'mask', this.RH);
+                case 'all language areas'
+                    roc_dnn    = mldl.ROC('test', 'DNN',           'label', this.NS,  'mask', this.GM);
+                    roc_dnn100 = mldl.ROC('test', 'DNN_100frames', 'label', this.NS,  'mask', this.GM);
+                    roc_tsk    = mldl.ROC('test', 'task',          'label', this.NS,  'mask', this.GM);
             end
             
             [x_dnn,y_dnn,~,auc_dnn] = perfcurveAverages(roc_dnn);
             [x_dnn100,y_dnn100,~,auc_dnn100] = perfcurveAverages(roc_dnn100);
             [x_tsk,y_tsk,~,auc_tsk] = perfcurveAverages(roc_tsk);
             figure;
-            p1 = plot(x_dnn, y_dnn, '-', 'LineWidth', 2);
+            p1 = plot(x_dnn, y_dnn, '-', 'LineWidth', 3);
             hold on
-            p2 = plot(x_dnn100, y_dnn100, '-', 'LineWidth', 2);
-            p3 = plot(x_tsk, y_tsk, '-', 'LineWidth', 2);
+            p2 = plot(x_dnn100, y_dnn100, '-', 'LineWidth', 3);
+            p3 = plot(x_tsk, y_tsk, '-', 'LineWidth', 3);
             rline = refline(1, 0);
-            rline.Color = 0.05*[1 1 1];
+            rline.Color = 0.5*[1 1 1];
             hold off
             pbaspect([1 1 1])
             set(gca, 'FontSize', 12)
             legend([p1 p2 p3], ...
-                   sprintf('DNN (320 frames) AUC = %6.4g', auc_dnn), ...
-                   sprintf('DNN (100 frames) AUC = %6.4g', auc_dnn100), ...
-                   sprintf('Task (100 frames) AUC = %6.4g', auc_tsk))
+                   sprintf('DNN (320 frames) AUC = %6.4f', auc_dnn), ...
+                   sprintf('DNN (100 frames) AUC = %6.4f', auc_dnn100), ...
+                   sprintf('Task (100 frames) AUC = %6.4f', auc_tsk))
             set(legend, 'Location', 'SouthEast')
             set(legend, 'FontSize', 14)
             legend('boxoff')
@@ -175,7 +179,7 @@ classdef Test_ROC < matlab.unittest.TestCase
             
             this.GM     = ImagingFormatContext(fullfile(this.workpath, 'gm3d.nii.gz'));
             this.LH     = ImagingFormatContext(fullfile(this.workpath, 'LHemis.nii.gz'));
-            this.NS     = ImagingFormatContext(fullfile(this.workpath, 'Neurosynth', 'lan_association_tanh_333_binarized.nii.gz'));
+            this.NS     = ImagingFormatContext(fullfile(this.workpath, 'Neurosynth', 'lan_association_tanh_333_b30_thr0p5_binarized.nii'));
             this.NSb    = ImagingFormatContext(fullfile(this.workpath, 'Neurosynth', 'ns_broca_333_binarized.nii.gz'));
             this.NSw    = ImagingFormatContext(fullfile(this.workpath, 'Neurosynth', 'ns_wernicke_333_binarized.nii.gz'));
             this.NSo    = ImagingFormatContext(fullfile(this.workpath, 'Neurosynth', 'ns_rlan_333_binarized_binarized.nii.gz'));

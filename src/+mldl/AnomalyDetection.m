@@ -1,10 +1,10 @@
-classdef DenseNet 
-	%% DENSENET  
+classdef AnomalyDetection 
+	%% ANOMALYDETECTION  
 
 	%  $Revision$
- 	%  was created 11-Oct-2019 18:26:30 by jjlee,
+ 	%  was created 13-Dec-2019 16:35:35 by jjlee,
  	%  last modified $LastChangedDate$ and placed into repository /Users/jjlee/MATLAB-Drive/mldl/src/+mldl.
- 	%% It was developed on Matlab 9.6.0.1135713 (R2019a) Update 3 for MACI64.  Copyright 2019 John Joowon Lee.
+ 	%% It was developed on Matlab 9.7.0.1247435 (R2019b) Update 2 for MACI64.  Copyright 2019 John Joowon Lee.
  	
 	properties
  		
@@ -12,8 +12,8 @@ classdef DenseNet
 
 	methods 
 		  
- 		function this = DenseNet(varargin)
- 			%% DENSENET
+ 		function this = AnomalyDetection(varargin)
+ 			%% ANOMALYDETECTION
  			%  @param .
 
  			

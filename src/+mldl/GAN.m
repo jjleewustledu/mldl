@@ -1,5 +1,6 @@
 classdef GAN 
-	%% GAN  
+	%% GAN stylistically modifies
+    %  web(fullfile(docroot, 'deeplearning/examples/train-generative-adversarial-network.html')) .
 
 	%  $Revision$
  	%  was created 15-Dec-2019 23:37:19 by jjlee,
@@ -7,22 +8,29 @@ classdef GAN
  	%% It was developed on Matlab 9.7.0.1247435 (R2019b) Update 2 for MACI64.  Copyright 2019 John Joowon Lee.
  	
 	properties
+        datasetFolder
  		dlnetDiscriminator
         dlnetGenerator
+        imds
+        lgraphGenerator
+        lgraphDiscriminator
+        numLatentInputs = 100
     end
 
 	methods		  
  		function this = GAN(varargin)
         end
         
-        function this = defineGeneratorNetwork(this)
+        function aids = augmentedImageDatastore(~)
+            aids = [];
+        end
+        function this = defineNetworks(this)
             
             filterSize = [4 4];
             numFilters = 64;
-            numLatentInputs = 100;
 
             layersGenerator = [
-                imageInputLayer([1 1 numLatentInputs],'Normalization','none','Name','in')
+                imageInputLayer([1 1 this.numLatentInputs],'Normalization','none','Name','in')
                 transposedConv2dLayer(filterSize,8*numFilters,'Name','tconv1')
                 batchNormalizationLayer('Name','bn1')
                 reluLayer('Name','relu1')
@@ -37,13 +45,8 @@ classdef GAN
                 reluLayer('Name','relu4')
                 transposedConv2dLayer(filterSize,3,'Stride',2,'Cropping',1,'Name','tconv5')
                 tanhLayer('Name','tanh')];
-
-            lgraphGenerator = layerGraph(layersGenerator);
-
-            this.dlnetGenerator = dlnetwork(lgraphGenerator);
-            
-        end
-        function this = defineDiscriminatorNetwork(this)
+            this.lgraphGenerator = layerGraph(layersGenerator);
+            this.dlnetGenerator = dlnetwork(this.lgraphGenerator);
             
             scale = 0.2;
 
@@ -61,15 +64,17 @@ classdef GAN
                 batchNormalizationLayer('Name','bn4')
                 leakyReluLayer(scale,'Name','lrelu4')
                 convolution2dLayer(filterSize,1,'Name','conv5')];
-
-            lgraphDiscriminator = layerGraph(layersDiscriminator);
-            
-            this.dlnetDiscriminator = dlnetwork(lgraphDiscriminator);
-
-        end        
-        function this = defineModelGradientsFunction(this)
+            this.lgraphDiscriminator = layerGraph(layersDiscriminator);            
+            this.dlnetDiscriminator = dlnetwork(this.lgraphDiscriminator);
         end
-        function this = defineLossFunction(this)
+        function plot(this)
+            figure
+            subplot(1,2,1)
+            plot(this.lgraphGenerator)
+            title("Generator")            
+            subplot(1,2,2)
+            plot(this.lgraphDiscriminator)
+            title("Discriminator")
         end
         function this = trainModel(this)
             
@@ -78,6 +83,7 @@ classdef GAN
             
             numEpochs = 1000;
             miniBatchSize = 128;
+            augimds = this.augmentedImageDatastore();
             augimds.MiniBatchSize = miniBatchSize;
             
             % Specify the options for ADAM optimization.
@@ -103,7 +109,7 @@ classdef GAN
             % input into the generator. Specify the dimension labels 'SSCB' (spatial, spatial, channel, batch). For GPU
             % training, convert the data to gpuArray.
             
-            ZValidation = randn(1,1,numLatentInputs,64,'single');
+            ZValidation = randn(1,1,this.numLatentInputs,64,'single');
             dlZValidation = dlarray(ZValidation,'SSCB');
 
             if (executionEnvironment == "auto" && canUseGPU) || executionEnvironment == "gpu"
@@ -138,7 +144,7 @@ classdef GAN
                     % Concatenate mini-batch of data and generate latent inputs for the
                     % generator network.
                     X = cat(4,data{:,1}{:});
-                    Z = randn(1,1,numLatentInputs,size(X,4),'single');
+                    Z = randn(1,1,this.numLatentInputs,size(X,4),'single');
 
                     % Normalize the images
                     X = (single(X)/255)*2 - 1;
@@ -158,7 +164,7 @@ classdef GAN
                     % dlfeval and the modelGradients function listed at the end of the
                     % example.
                     [gradientsGenerator, gradientsDiscriminator, stateGenerator] = ...
-                        dlfeval(@modelGradients, this.dlnetGenerator, this.dlnetDiscriminator, dlX, dlZ);
+                        dlfeval(@mldl.GAN.modelGradients, this.dlnetGenerator, this.dlnetDiscriminator, dlX, dlZ);
                     this.dlnetGenerator.State = stateGenerator;
 
                     % Update the discriminator network parameters.
@@ -203,7 +209,7 @@ classdef GAN
             % of 1-by-1-by-100 arrays of random values. To display the images together, use the imtile function and
             % rescale the images using the rescale function.
             
-            ZNew = randn(1,1,numLatentInputs,16,'single');
+            ZNew = randn(1,1,this.numLatentInputs,16,'single');
             dlZNew = dlarray(ZNew,'SSCB');
             
             if (executionEnvironment == "auto" && canUseGPU) || executionEnvironment == "gpu"
@@ -217,27 +223,11 @@ classdef GAN
             image(I)
             title("Generated Images")
         end        
-        function [gradientsGenerator, gradientsDiscriminator, stateGenerator] = ...
-            modelGradients(this, dlX, dlZ)
-
-            % Calculate the predictions for real data with the discriminator network.
-            dlYPred = forward(this.dlnetDiscriminator, dlX);
-
-            % Calculate the predictions for generated data with the discriminator network.
-            [dlXGenerated,stateGenerator] = forward(this.dlnetGenerator,dlZ);
-            dlYPredGenerated = forward(this.dlnetDiscriminator, dlXGenerated);
-
-            % Calculate the GAN loss
-            [lossGenerator, lossDiscriminator] = ganLoss(dlYPred,dlYPredGenerated);
-
-            % For each network, calculate the gradients with respect to the loss.
-            gradientsGenerator = dlgradient(lossGenerator, this.dlnetGenerator.Learnables,'RetainData',true);
-            gradientsDiscriminator = dlgradient(lossDiscriminator, this.dlnetDiscriminator.Learnables);
-
-        end
- 	end 
+    end 
     
-    methods (Static)
+    %% PROTECTED
+    
+    methods (Static, Access = protected)
         function [lossGenerator, lossDiscriminator] = ganLoss(dlYPred,dlYPredGenerated)
 
             % Calculate losses for the discriminator network.
@@ -249,6 +239,23 @@ classdef GAN
 
             % Calculate the loss for the generator network.
             lossGenerator = -mean(log(sigmoid(dlYPredGenerated)));
+        end
+        function [gradientsGenerator, gradientsDiscriminator, stateGenerator] = ...
+            modelGradients(dlnetGenerator, dlnetDiscriminator, dlX, dlZ)
+
+            % Calculate the predictions for real data with the discriminator network.
+            dlYPred = forward(dlnetDiscriminator, dlX);
+
+            % Calculate the predictions for generated data with the discriminator network.
+            [dlXGenerated,stateGenerator] = forward(dlnetGenerator,dlZ);
+            dlYPredGenerated = forward(dlnetDiscriminator, dlXGenerated);
+
+            % Calculate the GAN loss
+            [lossGenerator, lossDiscriminator] = mldl.GAN.ganLoss(dlYPred,dlYPredGenerated);
+
+            % For each network, calculate the gradients with respect to the loss.
+            gradientsGenerator = dlgradient(lossGenerator, dlnetGenerator.Learnables,'RetainData',true);
+            gradientsDiscriminator = dlgradient(lossDiscriminator, dlnetDiscriminator.Learnables);
         end
     end
 

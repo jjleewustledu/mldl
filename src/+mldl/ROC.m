@@ -13,13 +13,17 @@ classdef ROC < handle
 	properties (Dependent)
         averageTestGM
         averageTestLH
+        averageTestMask
+        GM
         label
         labelSampleGM
         labelSampleLH
+        labelSampleMask
         labelSamplesGM
         labelSamplesLH
-        GM
+        labelSamplesMask
  		LH
+        mask
         NS
         NSb
         NSw
@@ -27,6 +31,7 @@ classdef ROC < handle
         test
         testSamplesGM
         testSamplesLH
+        testSamplesMask
     end
     
     properties
@@ -157,6 +162,22 @@ classdef ROC < handle
             this.averageTestLH_ = this.createAverageTestLH();
             g = this.averageTestLH_;
         end
+        function g = get.averageTestMask(this)
+            if ~isempty(this.averageTestMask_)
+                g = this.averageTestMask_;
+                return
+            end
+            this.averageTestMask_ = this.createAverageTestMask();
+            g = this.averageTestMask_;
+        end
+        function g = get.GM(this)
+            if ~isempty(this.GM_)
+                g = this.GM_;
+                return
+            end            
+            this.GM_ = mlfourd.ImagingFormatContext(fullfile(this.toppath, 'gm3d.nii.gz'));
+            g = this.GM_;
+        end
         function g = get.label(this)
             g = this.label_;            
         end
@@ -165,6 +186,9 @@ classdef ROC < handle
         end
         function g = get.labelSampleLH(this)
             g = this.label.img(this.LH.img ~= 0);
+        end
+        function g = get.labelSampleMask(this)
+            g = this.label.img(this.mask.img ~= 0);
         end
         function g = get.labelSamplesGM(this)
             g = repmat(this.labelSampleGM', [1 this.N_SUBJ]);
@@ -178,13 +202,11 @@ classdef ROC < handle
             g = this.reshape2vec(g);
             this.assert0to1(g);
         end
-        function g = get.GM(this)
-            if ~isempty(this.GM_)
-                g = this.GM_;
-                return
-            end            
-            this.GM_ = mlfourd.ImagingFormatContext(fullfile(this.toppath, 'gm3d.nii.gz'));
-            g = this.GM_;
+        function g = get.labelSamplesMask(this)
+            g = repmat(this.labelSampleMask', [1 this.N_SUBJ]);
+            g = reshape(g, [size(this.labelSampleMask') this.N_SUBJ]);
+            g = this.reshape2vec(g);
+            this.assert0to1(g);
         end
         function g = get.LH(this)
             if ~isempty(this.LH_)
@@ -193,6 +215,9 @@ classdef ROC < handle
             end            
             this.LH_ = mlfourd.ImagingFormatContext(fullfile(this.toppath, 'LHemis.nii.gz'));
             g = this.LH_;
+        end
+        function g = get.mask(this)
+            g = this.mask_;
         end
         function g = get.NS(this)
             if ~isempty(this.NS_)
@@ -249,6 +274,17 @@ classdef ROC < handle
             g = this.reshape2vec(g);
             this.assert0to1(g);
         end
+        function g = get.testSamplesMask(this)
+            Nmask = dipsum(this.mask.img(this.mask.img ~= 0));
+            g = zeros(Nmask, this.N_SUBJ);
+            for s = 1:this.N_SUBJ
+                img = this.test.img(:,:,:,s);
+                img = img(this.mask.img ~= 0);
+                g(:, s) = img;
+            end
+            g = this.reshape2vec(g);
+            this.assert0to1(g);
+        end
         
         %%
         
@@ -260,14 +296,14 @@ classdef ROC < handle
         end
         function [x,y,t,auc] = perfcurve(this, varargin)
             [x,y,t,auc] = perfcurve( ...
-            this.labelSamplesGM' > 0, ...
-            this.testSamplesGM, ...
+            this.labelSamplesMask' > 0, ...
+            this.testSamplesMask, ...
             true, varargin{:});
         end
         function [x,y,t,auc] = perfcurveAverages(this, varargin)
-            N = dipsum(this.GM);
-            labelSmpl = this.labelSamplesGM(1:N);
-            testSmpl = this.averageTestGM.img(this.GM.img ~= 0);
+            N = dipsum(this.mask);
+            labelSmpl = this.labelSamplesMask(1:N);
+            testSmpl = this.averageTestMask.img(this.mask.img ~= 0);
             [x,y,t,auc] = perfcurve( ...
                 labelSmpl' > 0, ...
                 testSmpl, ...
@@ -283,10 +319,12 @@ classdef ROC < handle
             addParameter(ip, 'test',  'DNN',   @(x) isa(x, 'mlfourd.ImagingFormatContext') || ischar(x))
             addParameter(ip, 'label', this.NS, @(x) isa(x, 'mlfourd.ImagingFormatContext'))
             addParameter(ip, 'workpath', this.toppath, @isfolder)
+            addParameter(ip, 'mask', this.LH,  @(x) isa(x, 'mlfourd.ImagingFormatContext'))
             parse(ip, varargin{:})
             ipr = ip.Results;
             this.test_ = ipr.test;            
             this.label_ = ipr.label;
+            this.mask_ = ipr.mask;
             this.workpath = ipr.workpath;
 
             if isa(this.test_, 'mlfourd.ImagingFormatContext')
@@ -340,9 +378,11 @@ classdef ROC < handle
     properties (Access = protected)
         averageTestGM_
         averageTestLH_
-        label_
+        averageTestMask_
         GM_
+        label_
         LH_
+        mask_
         NS_
         NSb_
         NSw_
@@ -378,6 +418,18 @@ classdef ROC < handle
             averTest.img = img;
             averTest.filepath = this.toppath;
             averTest.filename = sprintf('average%s%sLH.nii.gz', upper(this.testType_(1)), this.testType_(2:end));
+            averTest.save
+        end
+        function averTest = createAverageTestMask(this)
+            Nmask = dipsum(this.mask);
+            testarr = reshape(this.testSamplesMask, [Nmask this.N_SUBJ]);
+            testarr = mean(testarr, 2)';
+            img = zeros(48,64,48);
+            img(this.mask.img ~= 0) = testarr;
+            averTest = copy(this.mask);
+            averTest.img = img;
+            averTest.filepath = this.toppath;
+            averTest.filename = sprintf('average%s%sMask.nii.gz', upper(this.testType_(1)), this.testType_(2:end));
             averTest.save
         end
         function v = reshape2vec(~, img)

@@ -21,7 +21,33 @@ classdef Test_LSTM < matlab.unittest.TestCase
  			this.assumeEqual(1,1);
  			this.verifyEqual(1,1);
  			this.assertEqual(1,1);
- 		end
+        end
+        function test_lstm(this)
+            % See also:  web(fullfile(docroot, 'deeplearning/ref/dlarray.lstm.html'))
+            
+            numFeatures = 10;
+            numObservations = 32;
+            sequenceLength = 64;
+            
+            X = randn(numFeatures,numObservations,sequenceLength);
+            dlX = dlarray(X,'CBT');
+            
+            numHiddenUnits = 3;
+            H0 = zeros(numHiddenUnits,1);
+            C0 = zeros(numHiddenUnits,1);
+            
+            weights = dlarray(randn(4*numHiddenUnits,numFeatures),'CU');
+            recurrentWeights = dlarray(randn(4*numHiddenUnits,numHiddenUnits),'CU');
+            bias = dlarray(randn(4*numHiddenUnits,1),'C');
+            
+            [dlY,hiddenState,cellState] = lstm(dlX,H0,C0,weights,recurrentWeights,bias);
+            disp(dlY)
+            
+        end
+        function test_FDG_LSTM(this)
+            %  See also:  mlkinetics.F18DeoxyGlucoseLaif, mlkinetics.Huang1980, mlpet.PLaif, 
+            obj = mldl.FDG_LSTM();
+        end
 	end
 
  	methods (TestClassSetup)
