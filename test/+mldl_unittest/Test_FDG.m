@@ -44,7 +44,7 @@ classdef Test_FDG < matlab.unittest.TestCase
             setenv('PROJECTS_DIR', getenv('SINGULARITY_HOME'))
             setenv('SUBJECTS_DIR', fullfile(getenv('PROJECTS_DIR'), 'subjects', ''))
             sessd = mlraichle.SessionData.create(this.folders);
-            radData = mlraichle.CCIRRadMeasurements.createBySession(sessd);
+            radData = mlraichle.CCIRRadMeasurements.createFromSession(sessd);
             cbv = mlfourd.ImagingContext2(0.04*ones(172,172,127));
  			this.testObj_ = FDG('sessionData', sessd, 'radData', radData, 'cbv', cbv);
  		end

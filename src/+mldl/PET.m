@@ -248,7 +248,7 @@ classdef PET
         function aif = extractAifHO(this)
         end
         function aif = extractAifFDG(this)
-            meas = mlraichle.CCIRRadMeasurements.createByDate(this.studyDate);
+            meas = mlraichle.CCIRRadMeasurements.createFromDate(this.studyDate);
             isfdg = strcmp(meas.countsFdg.TRACER, '[18F]DG');
             kdpm_g = meas.countsFdg.TRUEDECAY_APERTURECORRGe_68_Kdpm_G(isfdg);
             Bq_mL = kdpm_g * (1000/60) * 1.06;
