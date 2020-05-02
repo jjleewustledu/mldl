@@ -12,6 +12,8 @@ classdef Test_FDG < matlab.unittest.TestCase
  	
 	properties
         folders = 'CCIR_00559/ses-E03056/FDG_DT20190523132832.000000-Converted-AC'
+        home = '/Users/jjlee/Singularity/subjects_freesurfer/sub-S00000/resampling_restricted'
+        pwd0
  		registry
  		testObj
         xlsxfile = '~/Documents/private/CCIRRadMeasurements 2019may23.xlsx'
@@ -24,6 +26,27 @@ classdef Test_FDG < matlab.unittest.TestCase
  			this.verifyEqual(1,1);
  			this.assertEqual(1,1);
         end
+        function test_simulatedV1(this)
+            sim = mldl.SimFDG();
+            v1 = sim.simulatedV1();
+            v1.fsleyes()
+        end
+        function test_simulatedCmrglc(this)
+            tic
+            sim = mldl.SimFDG('unitTesting', true);
+            [fdg,cmr,ks] = sim.simulatedFdg();
+            toc
+            
+            fdg.fsleyes()
+            cmr.fsleyes()
+            ks.fsleyes()
+        end
+        function test_consistencyCmrglc(this)
+            sim = mldl.SimFDG();
+            disp(sim.normalValues)
+            
+        end
+        
         function test_radData(this)
             disp(this.testObj.radData)
         end
@@ -52,6 +75,7 @@ classdef Test_FDG < matlab.unittest.TestCase
 
  	methods (TestMethodSetup)
 		function setupFDGTest(this)
+            this.pwd0 = pushd(this.home);
  			this.testObj = this.testObj_;
  			this.addTeardown(@this.cleanTestMethod);
  		end
@@ -63,6 +87,7 @@ classdef Test_FDG < matlab.unittest.TestCase
 
 	methods (Access = private)
 		function cleanTestMethod(this)
+            popd(this.pwd0)
  		end
 	end
 
