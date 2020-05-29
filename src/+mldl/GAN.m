@@ -1,6 +1,8 @@
 classdef GAN 
 	%% GAN stylistically modifies
     %  web(fullfile(docroot, 'deeplearning/examples/train-generative-adversarial-network.html')) .
+    %  See also web(fullfile(docroot, 'deeplearning/ug/train-conditional-generative-adversarial-network.html'))
+    %  See also https://www.mathworks.com/support/search.html/answers/492678-two-issues-about-matlab-s-official-example-of-gan?q=&fq=asset_type_name:answer%20category:deeplearning/deep-learning-import-export-and-customization&page=1
 
 	%  $Revision$
  	%  was created 15-Dec-2019 23:37:19 by jjlee,
