@@ -57,6 +57,7 @@ classdef HDF5
             h5write(ipr.filename, ipr.datasetname, ipr.data, varargin{:})
         end
         function h5write_4dfp(this, filename, filename4dfp, start, varargin)
+            %% rescales img to [0 1]
             %  @param filename of h5 storage.
             %  @param filename4dfp of 4dfp image to store.
             %  @param start location within storage at which to start writing.  
@@ -81,13 +82,12 @@ classdef HDF5
                 error('mldl:ValueError', 'HDF5.h5write_4dfp.sz -> %g', szi)
             end
 
-            count = [szi 1 1];
+            count = [szi 1];
             this.h5write(ipr.filename, this.datasetname, img, start, count)
         end
     end
 
-	methods 
-		  
+	methods		  
  		function this = HDF5(varargin)
  			%% HDF5
  			%  @param maxsize.
