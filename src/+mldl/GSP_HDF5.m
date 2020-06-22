@@ -99,7 +99,7 @@ classdef GSP_HDF5 < mldl.HDF5
             img = img / dipmax(img);
             szi = size(img);
             if ~isempty(this.Nt)
-                assert(this.Nt == szi(end), 'mldl:ValueError', 'HDF5.h5write_4dfp.szi(4)->', szi(4))
+                assert(this.Nt == szi(end), 'mldl:ValueError', 'HDF5.h5write_4dfp.szi(end)->', szi(end))
             end
             if ~all(szi == this.maxsize(1:ndims(img)))
                 error('mldl:ValueError', 'HDF5.h5write_4dfp.sz -> %g', szi)
