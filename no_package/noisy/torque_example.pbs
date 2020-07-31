@@ -1,0 +1,68 @@
+#! /bin/bash
+# TORQUE_EXAMPLE
+# This is a template for submitting a single Torque scheduler job to a V100 node.
+# It uses Singularity and CUDA installed at the CHPC. 
+# Lines beginning with "#PBS" are read by Torque.
+# Submit the job to the Torque queue with:
+# >> qsub torque_example.pbs
+
+# resources #################################
+
+#PBS -N run_net_168h
+#PBS -l nodes=1:V100:ppn=1:gpus=1,walltime=168:00:00,mem=16gb
+
+set -e
+unset CONDA_DEFAULT_ENV
+unset DEBUG
+module load singularity-3.0.2
+module load cuda-10.1
+nvidia-smi -q
+step0=true
+step1=false
+step2=false
+step3=false
+step4=false
+step5=false
+WORK=/scratch/luckettp/Epi
+HPCSH=$WORK/net/for_redistribution_files_only/run_net.sh
+MCR=/export/matlab/MCR/R2019b/v97
+
+# step0 ######################################
+
+if [ "$step0" = true ]; then
+    echo entering step 0
+    $HPCSH $MCR &> $WORK/run_net.log 
+fi
+
+
+
+
+# step1 ######################################
+
+if [ "$step1" = true ]; then
+    echo entering step 1
+fi
+
+# step2 ######################################
+
+if [ "$step2" = true ]; then
+    echo entering step 2
+fi
+
+# step3 ######################################
+
+if [ "$step3" = true ]; then
+    echo entering step 3
+fi
+
+# step4 ######################################
+
+if [ "$step4" = true ]; then
+    echo entering step 4
+fi
+
+# step5 ######################################
+
+if [ "$step5" = true ]; then
+    echo entering step 5
+fi
