@@ -7,17 +7,14 @@ classdef HDF5
  	%% It was developed on Matlab 9.7.0.1319299 (R2019b) Update 5 for MACI64.  Copyright 2020 John Joowon Lee.
  	
 	properties
+        chunk = [4 4 4 1984]
+        datasetname = '/images'
+        datatype = 'single'
+        deflate = 9
         filename = 'HDF5.h5'
         maxsize = [48 64 48 Inf]
-        datatype = 'single'
-        chunk = [4 4 4 1984]
-        deflate = 9
-        datasetname = '/images'
-        doflipy = true
-        Nt
-        
+        Nt    
         srcLocation
-        h5Location
         suffix
     end
     
@@ -29,7 +26,6 @@ classdef HDF5
                 'maxsize', [48 64 160 Inf], ...
                 'chunk', [48 64 1 1], ...
                 'Nt', 160, ...
-                'h5Location', '/Users/jjlee/Google Drive/mkrs', ...
                 'srcLocation', '/Users/jjlee/Google Drive/mkrs', ...
                 'suffix', '_faln_dbnd_xr3d_atl_g7_bpss.nii.gz');
             this.h5create()
@@ -45,7 +41,6 @@ classdef HDF5
                 'maxsize', [48 64 200 Inf], ...
                 'chunk', [48 64 1 1], ...
                 'Nt', 200, ...
-                'h5Location', '/Users/jjlee/Google Drive/FocalEpilepsy', ...
                 'srcLocation', '/Users/jjlee/Google Drive/FocalEpilepsy', ...
                 'suffix', '_faln_dbnd_xr3d_atl_g7_bpss.nii.gz');
             this.h5create()
@@ -60,7 +55,6 @@ classdef HDF5
                 'maxsize', [48 64 818 Inf], ...
                 'chunk', [48 64 1 1], ...
                 'Nt', 818, ...
-                'h5Location', '/Users/jjlee/Google Drive/MSC', ...
                 'srcLocation', '/Users/jjlee/Google Drive/MSC/MSC01', ...
                 'suffix', '_faln_dbnd_xr3d_atl_g7_bpss.nii.gz');
             this.h5create()
@@ -70,6 +64,11 @@ classdef HDF5
             this.h5writez('sub', globbed, ...
                 'bold', 1, ...
                 'zcoords', 24)
+        end
+        function tf = doflipy(filename_format)
+            %% maintains consistent viewport orientations in Colab.
+            
+            tf = contains(filename_format, '.4dfp');
         end
     end
     
@@ -94,30 +93,8 @@ classdef HDF5
             h5create(ipr.filename, ipr.datasetname, ipr.maxsize, ...
                 'Datatype', this.datatype, 'ChunkSize', this.chunk, 'Deflate', this.deflate)
         end
-        function h5write(this, filename, datasetname, data, varargin)
-            %% H5WRITE preserves the interface of Matlab's native h5write() and adds supporting features.
-            %  @param filename.
-            %  @param datasetname.
-            %  @param data.
-            
-            ip = inputParser;
-            ip.KeepUnmatched = true;
-            addRequired(ip, 'filename', @isfile)
-            addRequired(ip, 'datasetname', @ischar)
-            addRequired(ip, 'data', @isnumeric)
-            parse(ip, filename, datasetname, data)
-            ipr = ip.Results;
-            
-            if ~strcmp(ipr.datasetname(1), filesep)
-                ipr.datasetname = [filesep ipr.datasetname];
-            end
-            if ~isa(ipr.data, this.datatype)
-                ipr.data = eval(sprintf('%s(ipr.data)', this.datatype));
-            end            
-            h5write(ipr.filename, ipr.datasetname, ipr.data, varargin{:})
-        end
         function h5write_format(this, filename, filename_format, start, varargin)
-            %% rescales img to [0 1]
+            %% rescales img to [0 1].
             %  @param required filename of h5 storage.
             %  @param required filename_format of 4dfp/Analyze/NIfTI image to store.
             %  @param required start location within storage at which to start writing.  
@@ -138,7 +115,7 @@ classdef HDF5
             else
                 img = ifc.img;
             end
-            if this.doflipy                
+            if this.doflipy(ipr.filename_format)              
                 img = flip(img, 2);
             end
             img = img - dipmin(img);
@@ -246,11 +223,11 @@ classdef HDF5
             %  @param chunk is numeric.
             %  @param deflate is numeric.
             %  @param datasetname is char..
-            %  @param h5Location is folder.
             %  @param srcLocation is folder.
             %  @param suffix is char.
 
             ip = inputParser;
+            ip.KeepUnmatched = true;
             addParameter(ip, 'filename', this.filename, @(x) ischar(x))
             addParameter(ip, 'maxsize', this.maxsize, @isnumeric)
             addParameter(ip, 'datatype', this.datatype, @ischar)
@@ -258,7 +235,6 @@ classdef HDF5
             addParameter(ip, 'deflate', this.deflate, @isnumeric)
             addParameter(ip, 'datasetname', this.datasetname, @ischar)
             addParameter(ip, 'Nt', [], @isnumeric)
-            addParameter(ip, 'h5Location', '', @isfolder)
             addParameter(ip, 'srcLocation', '', @isfolder)
             addParameter(ip, 'suffix', '_faln_dbnd_xr3d_atl_g7_bpss.4dfp.hdr', @ischar)  % '_faln_dbnd_xr3d_atl.4dfp.hdr'
             parse(ip, varargin{:})
@@ -271,11 +247,37 @@ classdef HDF5
             this.deflate = ipr.deflate;
             this.datasetname = ipr.datasetname;
             this.Nt = ipr.Nt;
-            this.h5Location = ipr.h5Location;
             this.srcLocation = ipr.srcLocation;
             this.suffix = ipr.suffix;
  		end
- 	end 
+    end 
+    
+    %% PRIVATE
+    
+    methods (Access = private)
+        function h5write(this, filename, datasetname, data, varargin)
+            %% H5WRITE preserves the interface of Matlab's native h5write() and adds supporting features.
+            %  @param filename.
+            %  @param datasetname.
+            %  @param data.
+            
+            ip = inputParser;
+            ip.KeepUnmatched = true;
+            addRequired(ip, 'filename', @isfile)
+            addRequired(ip, 'datasetname', @ischar)
+            addRequired(ip, 'data', @isnumeric)
+            parse(ip, filename, datasetname, data)
+            ipr = ip.Results;
+            
+            if ~strcmp(ipr.datasetname(1), filesep)
+                ipr.datasetname = [filesep ipr.datasetname];
+            end
+            if ~isa(ipr.data, this.datatype)
+                ipr.data = eval(sprintf('%s(ipr.data)', this.datatype));
+            end            
+            h5write(ipr.filename, ipr.datasetname, ipr.data, varargin{:})
+        end
+    end
 
 	%  Created with Newcl by John J. Lee after newfcn by Frank Gonzalez-Morphy
 end
